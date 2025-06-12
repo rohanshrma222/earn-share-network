@@ -4,6 +4,8 @@ import { DashboardLayout } from '@/components/Dashboard/DashboardLayout';
 import { AuthContainer } from '@/components/Auth/AuthContainer';
 import { StatsCard } from '@/components/Dashboard/StatsCard';
 import { ReferralCodeCard } from '@/components/Dashboard/ReferralCodeCard';
+import { LiveEarningsWidget } from '@/components/Dashboard/LiveEarningsWidget';
+import { RealTimeNotifications } from '@/components/Notifications/RealTimeNotifications';
 import { Users, DollarSign, TrendingUp, Gift } from 'lucide-react';
 
 const Index = () => {
@@ -19,7 +21,7 @@ const Index = () => {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Welcome back!</h2>
           <p className="text-muted-foreground">
-            Here's an overview of your referral performance.
+            Here's an overview of your referral performance with live updates.
           </p>
         </div>
 
@@ -55,9 +57,10 @@ const Index = () => {
           />
         </div>
 
-        {/* Referral Code Section */}
-        <div className="grid gap-6 md:grid-cols-2">
+        {/* Live Features Section */}
+        <div className="grid gap-6 lg:grid-cols-3">
           <ReferralCodeCard />
+          <LiveEarningsWidget />
           
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
             <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
@@ -78,32 +81,36 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-          <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 border-l-4 border-l-green-500 bg-muted/50">
-              <div>
-                <p className="font-medium">New referral joined</p>
-                <p className="text-sm text-muted-foreground">John Doe used your referral code</p>
+        {/* Real-time Notifications and Recent Activity */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+            <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 border-l-4 border-l-green-500 bg-muted/50">
+                <div>
+                  <p className="font-medium">New referral joined</p>
+                  <p className="text-sm text-muted-foreground">John Doe used your referral code</p>
+                </div>
+                <span className="text-sm text-muted-foreground">2 hours ago</span>
               </div>
-              <span className="text-sm text-muted-foreground">2 hours ago</span>
-            </div>
-            <div className="flex items-center justify-between p-3 border-l-4 border-l-blue-500 bg-muted/50">
-              <div>
-                <p className="font-medium">Earnings credited</p>
-                <p className="text-sm text-muted-foreground">₹125 from Level 1 referral purchase</p>
+              <div className="flex items-center justify-between p-3 border-l-4 border-l-blue-500 bg-muted/50">
+                <div>
+                  <p className="font-medium">Earnings credited</p>
+                  <p className="text-sm text-muted-foreground">₹125 from Level 1 referral purchase</p>
+                </div>
+                <span className="text-sm text-muted-foreground">5 hours ago</span>
               </div>
-              <span className="text-sm text-muted-foreground">5 hours ago</span>
-            </div>
-            <div className="flex items-center justify-between p-3 border-l-4 border-l-purple-500 bg-muted/50">
-              <div>
-                <p className="font-medium">Level 2 earning</p>
-                <p className="text-sm text-muted-foreground">₹25 from indirect referral</p>
+              <div className="flex items-center justify-between p-3 border-l-4 border-l-purple-500 bg-muted/50">
+                <div>
+                  <p className="font-medium">Level 2 earning</p>
+                  <p className="text-sm text-muted-foreground">₹25 from indirect referral</p>
+                </div>
+                <span className="text-sm text-muted-foreground">1 day ago</span>
               </div>
-              <span className="text-sm text-muted-foreground">1 day ago</span>
             </div>
           </div>
+
+          <RealTimeNotifications />
         </div>
       </div>
     </DashboardLayout>
