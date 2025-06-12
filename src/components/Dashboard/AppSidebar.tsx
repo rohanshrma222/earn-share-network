@@ -1,7 +1,6 @@
 
-import React from 'react';
-import { Users, TrendingUp, Gift, Settings, Home, DollarSign } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Home, Users, DollarSign, BarChart3, CreditCard, TrendingUp } from "lucide-react"
+
 import {
   Sidebar,
   SidebarContent,
@@ -11,10 +10,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarHeader,
-} from '@/components/ui/sidebar';
+} from "@/components/ui/sidebar"
 
-const menuItems = [
+// Menu items.
+const items = [
   {
     title: "Dashboard",
     url: "/",
@@ -33,42 +32,35 @@ const menuItems = [
   {
     title: "Analytics",
     url: "/analytics",
+    icon: BarChart3,
+  },
+  {
+    title: "Withdrawals",
+    url: "/withdrawals",
+    icon: CreditCard,
+  },
+  {
+    title: "Performance",
+    url: "/performance",
     icon: TrendingUp,
   },
-  {
-    title: "Referral Code",
-    url: "/referral-code",
-    icon: Gift,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
-];
+]
 
 export function AppSidebar() {
-  const location = useLocation();
-
   return (
     <Sidebar>
-      <SidebarHeader className="p-4">
-        <h2 className="text-lg font-semibold text-sidebar-foreground">
-          Earn & Share
-        </h2>
-      </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>Referral System</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={location.pathname === item.url}>
-                    <Link to={item.url} className="flex items-center gap-2">
-                      <item.icon className="h-4 w-4" />
+                  <SidebarMenuButton asChild>
+                    <a href={item.url}>
+                      <item.icon />
                       <span>{item.title}</span>
-                    </Link>
+                    </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -77,5 +69,5 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-  );
+  )
 }

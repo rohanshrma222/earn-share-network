@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import Referrals from "./pages/Referrals";
 import Earnings from "./pages/Earnings";
 import Analytics from "./pages/Analytics";
+import Withdrawals from "./pages/Withdrawals";
+import Performance from "./pages/Performance";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +27,8 @@ const App = () => (
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/earnings" element={<Earnings />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/withdrawals" element={<Withdrawals />} />
+            <Route path="/performance" element={<Performance />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
