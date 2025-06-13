@@ -10,6 +10,7 @@ import { Users, DollarSign, TrendingUp, Gift } from 'lucide-react';
 
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userName] = useState('John Doe'); // This will come from Supabase auth once connected
 
   if (!isAuthenticated) {
     return <AuthContainer onSuccess={() => setIsAuthenticated(true)} />;
@@ -19,7 +20,7 @@ const Index = () => {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Welcome back!</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Welcome back, {userName}!</h2>
           <p className="text-muted-foreground">
             Here's an overview of your referral performance with live updates.
           </p>
@@ -29,31 +30,31 @@ const Index = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             title="Total Referrals"
-            value="24"
+            value="0"
             icon={Users}
-            change="+3 this month"
-            changeType="positive"
+            change="Start referring friends!"
+            changeType="neutral"
           />
           <StatsCard
             title="Total Earnings"
-            value="₹12,450"
+            value="₹0"
             icon={DollarSign}
-            change="+12% from last month"
-            changeType="positive"
+            change="Your earnings will appear here"
+            changeType="neutral"
           />
           <StatsCard
             title="Active Referrals"
-            value="18"
+            value="0"
             icon={TrendingUp}
-            change="75% active rate"
+            change="No active referrals yet"
             changeType="neutral"
           />
           <StatsCard
             title="This Month"
-            value="₹2,340"
+            value="₹0"
             icon={Gift}
-            change="+23% from last month"
-            changeType="positive"
+            change="Start earning today!"
+            changeType="neutral"
           />
         </div>
 
@@ -67,15 +68,15 @@ const Index = () => {
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                 <span className="text-sm">Direct Referrals (Level 1)</span>
-                <span className="font-semibold">8/8</span>
+                <span className="font-semibold">0/8</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                 <span className="text-sm">Indirect Referrals (Level 2)</span>
-                <span className="font-semibold">16</span>
+                <span className="font-semibold">0</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                 <span className="text-sm">Pending Earnings</span>
-                <span className="font-semibold text-green-600">₹540</span>
+                <span className="font-semibold text-green-600">₹0</span>
               </div>
             </div>
           </div>
@@ -86,26 +87,13 @@ const Index = () => {
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
             <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 border-l-4 border-l-green-500 bg-muted/50">
+              <div className="flex items-center justify-center p-8 text-center">
                 <div>
-                  <p className="font-medium">New referral joined</p>
-                  <p className="text-sm text-muted-foreground">John Doe used your referral code</p>
+                  <p className="text-muted-foreground">No activity yet</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Start referring friends to see your activity here
+                  </p>
                 </div>
-                <span className="text-sm text-muted-foreground">2 hours ago</span>
-              </div>
-              <div className="flex items-center justify-between p-3 border-l-4 border-l-blue-500 bg-muted/50">
-                <div>
-                  <p className="font-medium">Earnings credited</p>
-                  <p className="text-sm text-muted-foreground">₹125 from Level 1 referral purchase</p>
-                </div>
-                <span className="text-sm text-muted-foreground">5 hours ago</span>
-              </div>
-              <div className="flex items-center justify-between p-3 border-l-4 border-l-purple-500 bg-muted/50">
-                <div>
-                  <p className="font-medium">Level 2 earning</p>
-                  <p className="text-sm text-muted-foreground">₹25 from indirect referral</p>
-                </div>
-                <span className="text-sm text-muted-foreground">1 day ago</span>
               </div>
             </div>
           </div>
