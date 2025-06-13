@@ -4,39 +4,38 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface LoginFormProps {
-  onSuccess: () => void;
   onSwitchToRegister: () => void;
 }
 
-export const LoginForm = ({ onSuccess, onSwitchToRegister }: LoginFormProps) => {
+export const LoginForm = ({ onSwitchToRegister }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      if (email && password) {
-        toast({
-          title: "Login successful",
-          description: "Welcome back to your dashboard!",
-        });
-        onSuccess();
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Please check your credentials and try again.",
-          variant: "destructive",
-        });
-      }
-      setIsLoading(false);
-    }, 1000);
+    const { error } = await signIn(email, password);
+
+    if (error) {
+      toast({
+        title: "Login failed",
+        description: error.message || "Please check your credentials and try again.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Login successful",
+        description: "Welcome back to your dashboard!",
+      });
+    }
+    setIsLoading(false);
   };
 
   return (
@@ -44,7 +43,7 @@ export const LoginForm = ({ onSuccess, onSwitchToRegister }: LoginFormProps) => 
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-bold">Welcome Back</h1>
         <p className="text-muted-foreground">
-          Sign in to your account to continue
+          Sign in to your referral dashboard
         </p>
       </div>
       

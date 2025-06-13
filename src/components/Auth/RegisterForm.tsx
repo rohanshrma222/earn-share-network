@@ -4,15 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface RegisterFormProps {
-  onSuccess: () => void;
   onSwitchToLogin: () => void;
 }
 
-export const RegisterForm = ({ onSuccess, onSwitchToLogin }: RegisterFormProps) => {
+export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
   const [formData, setFormData] = useState({
-    name: '',
+    fullName: '',
+    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -20,6 +21,7 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
   });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,23 +37,26 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
       return;
     }
 
-    // Simulate API call
-    setTimeout(() => {
-      if (formData.name && formData.email && formData.password) {
-        toast({
-          title: "Registration successful",
-          description: "Your account has been created successfully!",
-        });
-        onSuccess();
-      } else {
-        toast({
-          title: "Registration failed",
-          description: "Please fill in all required fields.",
-          variant: "destructive",
-        });
-      }
-      setIsLoading(false);
-    }, 1000);
+    const { error } = await signUp(formData.email, formData.password, {
+      full_name: formData.fullName,
+      username: formData.username,
+      referral_code: formData.referralCode,
+    });
+
+    if (error) {
+      toast({
+        title: "Registration failed",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Registration successful",
+        description: "Please check your email to verify your account.",
+      });
+      onSwitchToLogin();
+    }
+    setIsLoading(false);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -69,12 +74,23 @@ export const RegisterForm = ({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Full Name</Label>
+          <Label htmlFor="fullName">Full Name</Label>
           <Input
-            id="name"
+            id="fullName"
             placeholder="Enter your full name"
-            value={formData.name}
-            onChange={(e) => handleInputChange('name', e.target.value)}
+            value={formData.fullName}
+            onChange={(e) => handleInputChange('fullName', e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            placeholder="Choose a username"
+            value={formData.username}
+            onChange={(e) => handleInputChange('username', e.target.value)}
             required
           />
         </div>

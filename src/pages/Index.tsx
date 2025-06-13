@@ -1,26 +1,56 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { DashboardLayout } from '@/components/Dashboard/DashboardLayout';
-import { AuthContainer } from '@/components/Auth/AuthContainer';
 import { StatsCard } from '@/components/Dashboard/StatsCard';
 import { ReferralCodeCard } from '@/components/Dashboard/ReferralCodeCard';
 import { LiveEarningsWidget } from '@/components/Dashboard/LiveEarningsWidget';
 import { RealTimeNotifications } from '@/components/Notifications/RealTimeNotifications';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 import { Users, DollarSign, TrendingUp, Gift } from 'lucide-react';
 
 const Index = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userName] = useState('John Doe'); // This will come from Supabase auth once connected
+  const { user, profile, loading } = useAuth();
 
-  if (!isAuthenticated) {
-    return <AuthContainer onSuccess={() => setIsAuthenticated(true)} />;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
   }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center space-y-6">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight">Referral Dashboard</h1>
+            <p className="text-xl text-muted-foreground mt-2">
+              Join our network and start earning through referrals
+            </p>
+          </div>
+          <div className="space-x-4">
+            <Button asChild size="lg">
+              <Link to="/auth">Get Started</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const displayName = profile?.full_name || profile?.username || user.email || 'User';
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Welcome back, {userName}!</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Welcome back, {displayName}!</h2>
           <p className="text-muted-foreground">
             Here's an overview of your referral performance with live updates.
           </p>
