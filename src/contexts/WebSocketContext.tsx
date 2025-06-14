@@ -24,9 +24,24 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     if (!user) return;
 
     try {
-      // Use the correct WebSocket URL for Supabase edge functions
-      const wsUrl = `wss://qztrpzbtoivuqrnhfnaw.supabase.co/functions/v1/websocket-handler`;
+      // For Lovable preview environment, we need to construct the WebSocket URL differently
+      // Use the same domain as the current page but with wss protocol
+      const currentDomain = window.location.hostname;
+      let wsUrl;
+      
+      if (currentDomain.includes('lovableproject.com')) {
+        // Lovable preview environment - use the project subdomain with Supabase
+        wsUrl = `wss://qztrpzbtoivuqrnhfnaw.supabase.co/functions/v1/websocket-handler`;
+      } else if (currentDomain === 'localhost' || currentDomain === '127.0.0.1') {
+        // Local development
+        wsUrl = `ws://127.0.0.1:54321/functions/v1/websocket-handler`;
+      } else {
+        // Production or other environments
+        wsUrl = `wss://qztrpzbtoivuqrnhfnaw.supabase.co/functions/v1/websocket-handler`;
+      }
+      
       console.log('Attempting WebSocket connection to:', wsUrl);
+      console.log('Current domain:', currentDomain);
       
       const ws = new WebSocket(wsUrl);
 
@@ -89,6 +104,8 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        console.error('WebSocket URL that failed:', wsUrl);
+        console.error('User ID:', user.id);
         setIsConnected(false);
       };
 

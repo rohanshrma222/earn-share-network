@@ -27,6 +27,8 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
+    console.log('Processing purchase for user:', userId, 'amount:', amount)
+
     // Get user profile for notification
     const { data: profile } = await supabase
       .from('profiles')
@@ -35,6 +37,7 @@ serve(async (req) => {
       .single()
 
     const userName = profile?.full_name || profile?.username || 'Unknown User'
+    console.log('User name:', userName)
 
     // Award referral earnings
     const { error: earningsError } = await supabase.rpc('award_referral_earnings', {
@@ -50,22 +53,27 @@ serve(async (req) => {
       )
     }
 
+    console.log('Earnings awarded successfully')
+
     // Get referrals to notify
     const { data: referrals } = await supabase
       .from('referrals')
       .select('referrer_id, level, earnings')
       .eq('referred_id', userId)
 
+    console.log('Found referrals to notify:', referrals?.length || 0)
+
     // Send WebSocket notifications to referrers
     for (const referral of referrals || []) {
       const earningAmount = amount * (referral.level === 1 ? 0.05 : 0.01)
       
       try {
-        // Use the correct HTTP endpoint for WebSocket notifications
+        // Use the websocket-handler edge function to send notifications
         const websocketUrl = `${supabaseUrl}/functions/v1/websocket-handler`;
+        console.log('Sending notification to:', referral.referrer_id, 'via:', websocketUrl)
         
         // Send purchase completed notification
-        await fetch(websocketUrl, {
+        const purchaseResponse = await fetch(websocketUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -82,10 +90,16 @@ serve(async (req) => {
               timestamp: new Date().toISOString()
             }
           })
-        }).catch(err => console.error('WebSocket notification error:', err))
+        })
+
+        if (purchaseResponse.ok) {
+          console.log('Purchase notification sent successfully to:', referral.referrer_id)
+        } else {
+          console.error('Failed to send purchase notification:', await purchaseResponse.text())
+        }
 
         // Send earning update notification
-        await fetch(websocketUrl, {
+        const earningResponse = await fetch(websocketUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -100,10 +114,16 @@ serve(async (req) => {
               timestamp: new Date().toISOString()
             }
           })
-        }).catch(err => console.error('WebSocket notification error:', err))
+        })
+
+        if (earningResponse.ok) {
+          console.log('Earning notification sent successfully to:', referral.referrer_id)
+        } else {
+          console.error('Failed to send earning notification:', await earningResponse.text())
+        }
 
       } catch (error) {
-        console.error('Error sending WebSocket notification:', error)
+        console.error('Error sending WebSocket notification to:', referral.referrer_id, error)
       }
     }
 
