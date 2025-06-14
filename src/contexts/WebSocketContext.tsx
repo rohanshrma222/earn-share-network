@@ -24,8 +24,8 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     if (!user) return;
 
     try {
-      // Use the correct WebSocket URL for local development
-      const wsUrl = `ws://127.0.0.1:54321/functions/v1/websocket-handler`;
+      // Use the correct WebSocket URL for Supabase edge functions
+      const wsUrl = `wss://qztrpzbtoivuqrnhfnaw.supabase.co/functions/v1/websocket-handler`;
       console.log('Attempting WebSocket connection to:', wsUrl);
       
       const ws = new WebSocket(wsUrl);

@@ -61,8 +61,8 @@ serve(async (req) => {
       const earningAmount = amount * (referral.level === 1 ? 0.05 : 0.01)
       
       try {
-        // Use the correct HTTP endpoint for WebSocket notifications (local development)
-        const websocketUrl = `http://127.0.0.1:54321/functions/v1/websocket-handler`;
+        // Use the correct HTTP endpoint for WebSocket notifications
+        const websocketUrl = `${supabaseUrl}/functions/v1/websocket-handler`;
         
         // Send purchase completed notification
         await fetch(websocketUrl, {
