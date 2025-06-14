@@ -100,7 +100,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      award_referral_earnings: {
+        Args: { user_id: string; purchase_amount: number }
+        Returns: undefined
+      }
+      get_user_referral_stats: {
+        Args: { user_id: string }
+        Returns: {
+          direct_referrals_count: number
+          indirect_referrals_count: number
+          total_earnings: number
+          monthly_earnings: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

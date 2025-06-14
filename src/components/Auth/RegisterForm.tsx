@@ -5,19 +5,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useSearchParams } from 'react-router-dom';
 
 interface RegisterFormProps {
   onSwitchToLogin: () => void;
 }
 
 export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     fullName: '',
     username: '',
     email: '',
     password: '',
     confirmPassword: '',
-    referralCode: '',
+    referralCode: searchParams.get('ref') || '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -52,7 +54,9 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
     } else {
       toast({
         title: "Registration successful",
-        description: "Please check your email to verify your account.",
+        description: formData.referralCode 
+          ? "Account created with referral code! Please check your email to verify your account."
+          : "Please check your email to verify your account.",
       });
       onSwitchToLogin();
     }
@@ -132,13 +136,18 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="referralCode">Referral Code (Optional)</Label>
+          <Label htmlFor="referralCode">Referral Code {formData.referralCode && <span className="text-green-600">(Pre-filled)</span>}</Label>
           <Input
             id="referralCode"
             placeholder="Enter referral code if you have one"
             value={formData.referralCode}
             onChange={(e) => handleInputChange('referralCode', e.target.value)}
           />
+          {formData.referralCode && (
+            <p className="text-sm text-green-600">
+              ✓ You'll be connected to the referrer when you sign up!
+            </p>
+          )}
         </div>
         
         <Button type="submit" className="w-full" disabled={isLoading}>

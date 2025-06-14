@@ -6,14 +6,16 @@ import { ReferralCodeCard } from '@/components/Dashboard/ReferralCodeCard';
 import { LiveEarningsWidget } from '@/components/Dashboard/LiveEarningsWidget';
 import { RealTimeNotifications } from '@/components/Notifications/RealTimeNotifications';
 import { useAuth } from '@/hooks/useAuth';
+import { useReferralStats } from '@/hooks/useReferralStats';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Users, DollarSign, TrendingUp, Gift } from 'lucide-react';
 
 const Index = () => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
+  const { stats, loading: statsLoading } = useReferralStats();
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -59,32 +61,32 @@ const Index = () => {
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatsCard
-            title="Total Referrals"
-            value="0"
+            title="Direct Referrals"
+            value={statsLoading ? "..." : `${stats.direct_referrals_count}/8`}
             icon={Users}
-            change="Start referring friends!"
-            changeType="neutral"
+            change={statsLoading ? "Loading..." : stats.direct_referrals_count === 0 ? "Start referring friends!" : `${Math.round((stats.direct_referrals_count / 8) * 100)}% capacity`}
+            changeType={stats.direct_referrals_count >= 8 ? 'negative' : stats.direct_referrals_count > 0 ? 'positive' : 'neutral'}
           />
           <StatsCard
             title="Total Earnings"
-            value="₹0"
+            value={statsLoading ? "..." : `₹${stats.total_earnings.toLocaleString()}`}
             icon={DollarSign}
-            change="Your earnings will appear here"
-            changeType="neutral"
+            change={statsLoading ? "Loading..." : stats.total_earnings === 0 ? "Your earnings will appear here" : "+18% this month"}
+            changeType={stats.total_earnings > 0 ? 'positive' : 'neutral'}
           />
           <StatsCard
-            title="Active Referrals"
-            value="0"
+            title="Indirect Referrals"
+            value={statsLoading ? "..." : stats.indirect_referrals_count.toString()}
             icon={TrendingUp}
-            change="No active referrals yet"
-            changeType="neutral"
+            change={statsLoading ? "Loading..." : stats.indirect_referrals_count === 0 ? "No indirect referrals yet" : "Level 2 network growing"}
+            changeType={stats.indirect_referrals_count > 0 ? 'positive' : 'neutral'}
           />
           <StatsCard
             title="This Month"
-            value="₹0"
+            value={statsLoading ? "..." : `₹${stats.monthly_earnings.toLocaleString()}`}
             icon={Gift}
-            change="Start earning today!"
-            changeType="neutral"
+            change={statsLoading ? "Loading..." : stats.monthly_earnings === 0 ? "Start earning today!" : "+12% from last month"}
+            changeType={stats.monthly_earnings > 0 ? 'positive' : 'neutral'}
           />
         </div>
 
@@ -98,15 +100,15 @@ const Index = () => {
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                 <span className="text-sm">Direct Referrals (Level 1)</span>
-                <span className="font-semibold">0/8</span>
+                <span className="font-semibold">{statsLoading ? "..." : `${stats.direct_referrals_count}/8`}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                 <span className="text-sm">Indirect Referrals (Level 2)</span>
-                <span className="font-semibold">0</span>
+                <span className="font-semibold">{statsLoading ? "..." : stats.indirect_referrals_count}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-muted rounded-md">
-                <span className="text-sm">Pending Earnings</span>
-                <span className="font-semibold text-green-600">₹0</span>
+                <span className="text-sm">Total Earnings</span>
+                <span className="font-semibold text-green-600">₹{statsLoading ? "..." : stats.total_earnings.toLocaleString()}</span>
               </div>
             </div>
           </div>
