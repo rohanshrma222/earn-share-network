@@ -65,15 +65,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       console.log('Attempting signup for:', email);
       
+      // Try to sign up with email confirmation disabled
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: userData
+          data: userData,
+          emailRedirectTo: undefined // Disable email confirmation
         }
       });
       
       if (error) {
+        // If user already exists, try to sign them in instead
+        if (error.message.includes('User already registered')) {
+          console.log('User already exists, attempting to sign in...');
+          return await signIn(email, password);
+        }
         console.error('Signup error:', error);
         return { error };
       }
@@ -84,7 +91,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (data.user && data.session) {
         console.log('User logged in immediately after signup');
       } else if (data.user && !data.session) {
-        console.log('User created but needs email confirmation');
+        console.log('User created but attempting automatic sign-in...');
+        // Try to sign in immediately after signup
+        const signInResult = await signIn(email, password);
+        return signInResult;
       }
       
       return { error: null };
@@ -105,6 +115,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) {
         console.error('Signin error:', error);
         console.error('Error code:', error.status, 'Message:', error.message);
+        
+        // If it's an invalid credentials error and user might need verification,
+        // provide a more helpful error message
+        if (error.message.includes('Invalid login credentials')) {
+          return { 
+            error: {
+              ...error,
+              message: 'Account exists but may need verification. Please check your Supabase dashboard to confirm the user account manually, or try signing up again.'
+            }
+          };
+        }
       } else {
         console.log('Signin successful:', data.user?.email);
         console.log('User confirmed:', data.user?.email_confirmed_at);
