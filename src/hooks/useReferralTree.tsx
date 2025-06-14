@@ -57,7 +57,7 @@ export const useReferralTree = () => {
         const transformedDirect = directData?.map(referral => ({
           id: referral.referred_id || '',
           name: referral.referred?.full_name || referral.referred?.username || 'Unknown User',
-          email: referral.referred?.email || 'No email',
+          email: referral.referred?.username || 'No email available',
           joinDate: new Date(referral.created_at).toLocaleDateString(),
           earnings: referral.earnings || 0,
           isActive: referral.status === 'active',
@@ -68,7 +68,7 @@ export const useReferralTree = () => {
         const transformedIndirect = indirectData?.map(referral => ({
           id: referral.referred_id || '',
           name: referral.referred?.full_name || referral.referred?.username || 'Unknown User',
-          email: referral.referred?.email || 'No email',
+          email: referral.referred?.username || 'No email available',
           joinDate: new Date(referral.created_at).toLocaleDateString(),
           earnings: referral.earnings || 0,
           isActive: referral.status === 'active',
