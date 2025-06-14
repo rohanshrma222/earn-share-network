@@ -10,11 +10,14 @@ interface WebSocketMessage {
 const connections = new Map<string, WebSocket>()
 
 serve(async (req) => {
+  console.log('WebSocket handler received request:', req.method, req.url)
+  
   const { headers } = req
   const upgradeHeader = headers.get("upgrade") || ""
 
   // Handle WebSocket upgrade
   if (upgradeHeader.toLowerCase() === "websocket") {
+    console.log('WebSocket upgrade requested')
     const { socket, response } = Deno.upgradeWebSocket(req)
     
     socket.onopen = () => {
@@ -24,12 +27,13 @@ serve(async (req) => {
     socket.onmessage = (event) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data)
-        console.log("Received message:", message)
+        console.log("Received WebSocket message:", message)
 
         switch (message.type) {
           case 'subscribe':
             if (message.userId) {
               connections.set(message.userId, socket)
+              console.log(`User ${message.userId} subscribed. Total connections: ${connections.size}`)
               socket.send(JSON.stringify({
                 type: 'connected',
                 data: { status: 'subscribed', userId: message.userId }
@@ -48,7 +52,7 @@ serve(async (req) => {
             console.log("Unknown message type:", message.type)
         }
       } catch (error) {
-        console.error("Error parsing message:", error)
+        console.error("Error parsing WebSocket message:", error)
       }
     }
 
@@ -57,6 +61,7 @@ serve(async (req) => {
       for (const [userId, conn] of connections.entries()) {
         if (conn === socket) {
           connections.delete(userId)
+          console.log(`User ${userId} disconnected. Total connections: ${connections.size}`)
           break
         }
       }
@@ -74,19 +79,23 @@ serve(async (req) => {
   if (req.method === 'POST') {
     try {
       const { type, userId, data } = await req.json()
+      console.log(`Broadcasting message to user ${userId}:`, { type, data })
       
       if (userId && connections.has(userId)) {
         const socket = connections.get(userId)
         if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type,
-            data
-          }))
+          const message = JSON.stringify({ type, data })
+          socket.send(message)
+          console.log(`Message sent successfully to user ${userId}`)
           
           return new Response(JSON.stringify({ success: true }), {
             headers: { 'Content-Type': 'application/json' }
           })
+        } else {
+          console.log(`Socket for user ${userId} is not in OPEN state`)
         }
+      } else {
+        console.log(`User ${userId} not found in connections. Available users:`, Array.from(connections.keys()))
       }
       
       return new Response(JSON.stringify({ success: false, error: 'User not connected' }), {
