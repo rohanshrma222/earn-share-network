@@ -1,105 +1,130 @@
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { toast } from 'sonner';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface WebSocketContextType {
   isConnected: boolean;
-  sendMessage: (message: any) => void;
   subscribe: (event: string, callback: (data: any) => void) => void;
   unsubscribe: (event: string) => void;
+  sendMessage: (message: any) => void;
 }
 
-const WebSocketContext = createContext<WebSocketContextType | null>(null);
+const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
-interface WebSocketProviderProps {
-  children: ReactNode;
-}
-
-export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
-  const [socket, setSocket] = useState<WebSocket | null>(null);
+export const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
-  const [subscribers, setSubscribers] = useState<Map<string, ((data: any) => void)[]>>(new Map());
+  const wsRef = useRef<WebSocket | null>(null);
+  const subscribersRef = useRef<Map<string, Set<(data: any) => void>>>(new Map());
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
 
-  useEffect(() => {
-    // In a real implementation, this would connect to your actual WebSocket server
-    // For demo purposes, we'll simulate a WebSocket connection
-    const mockSocket = {
-      readyState: WebSocket.OPEN,
-      send: (data: string) => console.log('Sending:', data),
-      close: () => setIsConnected(false),
-      addEventListener: (event: string, handler: any) => {},
-      removeEventListener: (event: string, handler: any) => {},
-    } as unknown as WebSocket;
+  const connect = () => {
+    if (!user) return;
 
-    setSocket(mockSocket);
-    setIsConnected(true);
+    try {
+      const wsUrl = `wss://qztrpzbtoivuqrnhfnaw.supabase.co/functions/v1/websocket-handler`;
+      const ws = new WebSocket(wsUrl);
 
-    // Simulate incoming real-time messages
-    const simulateMessages = () => {
-      const events = ['earning_update', 'referral_joined', 'purchase_completed'];
-      const randomEvent = events[Math.floor(Math.random() * events.length)];
-      
-      const mockData = {
-        earning_update: {
-          userId: 'user123',
-          amount: Math.floor(Math.random() * 500) + 50,
-          source: 'Level 1 Referral',
-          timestamp: new Date().toISOString()
-        },
-        referral_joined: {
-          referralName: 'John Doe',
-          level: Math.random() > 0.5 ? 1 : 2,
-          timestamp: new Date().toISOString()
-        },
-        purchase_completed: {
-          amount: Math.floor(Math.random() * 5000) + 1000,
-          referralName: 'Jane Smith',
-          earning: Math.floor(Math.random() * 250) + 25,
-          timestamp: new Date().toISOString()
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        setIsConnected(true);
+        
+        // Subscribe this user
+        ws.send(JSON.stringify({
+          type: 'subscribe',
+          userId: user.id
+        }));
+
+        // Start heartbeat
+        const heartbeat = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'heartbeat' }));
+          } else {
+            clearInterval(heartbeat);
+          }
+        }, 30000); // Every 30 seconds
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log('Received WebSocket message:', message);
+
+          if (message.type && message.type !== 'heartbeat_response' && message.type !== 'connected') {
+            const subscribers = subscribersRef.current.get(message.type);
+            if (subscribers) {
+              subscribers.forEach(callback => callback(message.data));
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
         }
       };
 
-      const data = mockData[randomEvent as keyof typeof mockData];
-      
-      // Notify subscribers
-      const eventSubscribers = subscribers.get(randomEvent) || [];
-      eventSubscribers.forEach(callback => callback(data));
-    };
+      ws.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
+        setIsConnected(false);
+        wsRef.current = null;
 
-    // Simulate messages every 10-15 seconds
-    const interval = setInterval(simulateMessages, Math.random() * 5000 + 10000);
+        // Attempt to reconnect after 3 seconds if it wasn't a manual close
+        if (event.code !== 1000) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('Attempting to reconnect...');
+            connect();
+          }, 3000);
+        }
+      };
 
-    return () => {
-      clearInterval(interval);
-      mockSocket.close();
-    };
-  }, [subscribers]);
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
 
-  const sendMessage = (message: any) => {
-    if (socket && isConnected) {
-      socket.send(JSON.stringify(message));
+      wsRef.current = ws;
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error);
     }
   };
 
+  useEffect(() => {
+    if (user) {
+      connect();
+    }
+
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close(1000, 'Component unmounting');
+      }
+    };
+  }, [user]);
+
   const subscribe = (event: string, callback: (data: any) => void) => {
-    setSubscribers(prev => {
-      const newMap = new Map(prev);
-      const eventSubs = newMap.get(event) || [];
-      newMap.set(event, [...eventSubs, callback]);
-      return newMap;
-    });
+    const subscribers = subscribersRef.current.get(event) || new Set();
+    subscribers.add(callback);
+    subscribersRef.current.set(event, subscribers);
   };
 
   const unsubscribe = (event: string) => {
-    setSubscribers(prev => {
-      const newMap = new Map(prev);
-      newMap.delete(event);
-      return newMap;
-    });
+    subscribersRef.current.delete(event);
+  };
+
+  const sendMessage = (message: any) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(message));
+    } else {
+      console.warn('WebSocket is not connected');
+    }
   };
 
   return (
-    <WebSocketContext.Provider value={{ isConnected, sendMessage, subscribe, unsubscribe }}>
+    <WebSocketContext.Provider value={{
+      isConnected,
+      subscribe,
+      unsubscribe,
+      sendMessage
+    }}>
       {children}
     </WebSocketContext.Provider>
   );
@@ -107,7 +132,7 @@ export const WebSocketProvider = ({ children }: WebSocketProviderProps) => {
 
 export const useWebSocket = () => {
   const context = useContext(WebSocketContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useWebSocket must be used within a WebSocketProvider');
   }
   return context;

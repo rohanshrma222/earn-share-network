@@ -5,6 +5,7 @@ import { StatsCard } from '@/components/Dashboard/StatsCard';
 import { ReferralCodeCard } from '@/components/Dashboard/ReferralCodeCard';
 import { LiveEarningsWidget } from '@/components/Dashboard/LiveEarningsWidget';
 import { RealTimeNotifications } from '@/components/Notifications/RealTimeNotifications';
+import { PurchaseSimulator } from '@/components/Simulation/PurchaseSimulator';
 import { useAuth } from '@/hooks/useAuth';
 import { useReferralStats } from '@/hooks/useReferralStats';
 import { Button } from '@/components/ui/button';
@@ -94,24 +95,7 @@ const Index = () => {
         <div className="grid gap-6 lg:grid-cols-3">
           <ReferralCodeCard />
           <LiveEarningsWidget />
-          
-          <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-muted rounded-md">
-                <span className="text-sm">Direct Referrals (Level 1)</span>
-                <span className="font-semibold">{statsLoading ? "..." : `${stats.direct_referrals_count}/8`}</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-muted rounded-md">
-                <span className="text-sm">Indirect Referrals (Level 2)</span>
-                <span className="font-semibold">{statsLoading ? "..." : stats.indirect_referrals_count}</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-muted rounded-md">
-                <span className="text-sm">Total Earnings</span>
-                <span className="font-semibold text-green-600">₹{statsLoading ? "..." : stats.total_earnings.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
+          <PurchaseSimulator />
         </div>
 
         {/* Real-time Notifications and Recent Activity */}
