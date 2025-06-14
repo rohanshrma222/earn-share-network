@@ -27,6 +27,15 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
+    // Get user profile for notification
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, username')
+      .eq('id', userId)
+      .single()
+
+    const userName = profile?.full_name || profile?.username || 'Unknown User'
+
     // Award referral earnings
     const { error: earningsError } = await supabase.rpc('award_referral_earnings', {
       user_id: userId,
@@ -41,34 +50,53 @@ serve(async (req) => {
       )
     }
 
-    // Get user profile for notification
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name, username')
-      .eq('id', userId)
-      .single()
-
-    const userName = profile?.full_name || profile?.username || 'Unknown User'
-
     // Get referrals to notify
     const { data: referrals } = await supabase
       .from('referrals')
       .select('referrer_id, level, earnings')
       .eq('referred_id', userId)
 
-    // Send WebSocket notifications
-    const wsUrl = `${Deno.env.get('SUPABASE_URL')?.replace('https://', 'wss://')}/functions/v1/websocket-handler`
-    
+    // Send WebSocket notifications to referrers
     for (const referral of referrals || []) {
       const earningAmount = amount * (referral.level === 1 ? 0.05 : 0.01)
       
       try {
-        // This would need to be implemented with a proper WebSocket client
-        // For now, we'll just log the events
-        console.log(`Would notify user ${referral.referrer_id} of earning: ₹${earningAmount}`)
-        
-        // In a real implementation, you'd maintain WebSocket connections
-        // and send these notifications through them
+        // Send notification via WebSocket handler
+        await fetch(`${supabaseUrl.replace('https://', 'wss://')}/functions/v1/websocket-handler`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'purchase_completed',
+            userId: referral.referrer_id,
+            data: {
+              referralName: userName,
+              amount: amount,
+              earning: earningAmount,
+              level: referral.level,
+              timestamp: new Date().toISOString()
+            }
+          })
+        }).catch(err => console.error('WebSocket notification error:', err))
+
+        // Also send earning update notification
+        await fetch(`${supabaseUrl.replace('https://', 'wss://')}/functions/v1/websocket-handler`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'earning_update',
+            userId: referral.referrer_id,
+            data: {
+              amount: earningAmount,
+              source: `Purchase by ${userName}`,
+              timestamp: new Date().toISOString()
+            }
+          })
+        }).catch(err => console.error('WebSocket notification error:', err))
+
       } catch (error) {
         console.error('Error sending WebSocket notification:', error)
       }

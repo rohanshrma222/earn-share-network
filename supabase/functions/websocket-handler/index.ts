@@ -13,63 +13,96 @@ serve(async (req) => {
   const { headers } = req
   const upgradeHeader = headers.get("upgrade") || ""
 
-  if (upgradeHeader.toLowerCase() !== "websocket") {
-    return new Response("Expected WebSocket connection", { status: 400 })
-  }
+  // Handle WebSocket upgrade
+  if (upgradeHeader.toLowerCase() === "websocket") {
+    const { socket, response } = Deno.upgradeWebSocket(req)
+    
+    socket.onopen = () => {
+      console.log("WebSocket connection opened")
+    }
 
-  const { socket, response } = Deno.upgradeWebSocket(req)
-  
-  socket.onopen = () => {
-    console.log("WebSocket connection opened")
-  }
+    socket.onmessage = (event) => {
+      try {
+        const message: WebSocketMessage = JSON.parse(event.data)
+        console.log("Received message:", message)
 
-  socket.onmessage = (event) => {
-    try {
-      const message: WebSocketMessage = JSON.parse(event.data)
-      console.log("Received message:", message)
+        switch (message.type) {
+          case 'subscribe':
+            if (message.userId) {
+              connections.set(message.userId, socket)
+              socket.send(JSON.stringify({
+                type: 'connected',
+                data: { status: 'subscribed', userId: message.userId }
+              }))
+            }
+            break
 
-      switch (message.type) {
-        case 'subscribe':
-          if (message.userId) {
-            connections.set(message.userId, socket)
+          case 'heartbeat':
             socket.send(JSON.stringify({
-              type: 'connected',
-              data: { status: 'subscribed', userId: message.userId }
+              type: 'heartbeat_response',
+              data: { timestamp: new Date().toISOString() }
             }))
-          }
-          break
+            break
 
-        case 'heartbeat':
+          default:
+            console.log("Unknown message type:", message.type)
+        }
+      } catch (error) {
+        console.error("Error parsing message:", error)
+      }
+    }
+
+    socket.onclose = () => {
+      // Remove connection from map
+      for (const [userId, conn] of connections.entries()) {
+        if (conn === socket) {
+          connections.delete(userId)
+          break
+        }
+      }
+      console.log("WebSocket connection closed")
+    }
+
+    socket.onerror = (error) => {
+      console.error("WebSocket error:", error)
+    }
+
+    return response
+  }
+
+  // Handle HTTP POST requests for broadcasting messages
+  if (req.method === 'POST') {
+    try {
+      const { type, userId, data } = await req.json()
+      
+      if (userId && connections.has(userId)) {
+        const socket = connections.get(userId)
+        if (socket && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({
-            type: 'heartbeat_response',
-            data: { timestamp: new Date().toISOString() }
+            type,
+            data
           }))
-          break
-
-        default:
-          console.log("Unknown message type:", message.type)
+          
+          return new Response(JSON.stringify({ success: true }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        }
       }
+      
+      return new Response(JSON.stringify({ success: false, error: 'User not connected' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      })
     } catch (error) {
-      console.error("Error parsing message:", error)
+      console.error('Error handling POST request:', error)
+      return new Response(JSON.stringify({ error: 'Invalid request' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      })
     }
   }
 
-  socket.onclose = () => {
-    // Remove connection from map
-    for (const [userId, conn] of connections.entries()) {
-      if (conn === socket) {
-        connections.delete(userId)
-        break
-      }
-    }
-    console.log("WebSocket connection closed")
-  }
-
-  socket.onerror = (error) => {
-    console.error("WebSocket error:", error)
-  }
-
-  return response
+  return new Response("Expected WebSocket connection or POST request", { status: 400 })
 })
 
 // Function to broadcast message to a specific user
