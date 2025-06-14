@@ -19,6 +19,7 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
   const [username, setUsername] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const { signUp } = useAuth();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -64,26 +65,43 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
       const { error } = await signUp(email, password, userData);
 
       if (error) {
+        console.log("Signup error:", error);
+        
         if (error.message.includes('User already registered')) {
           toast({
             title: "Account exists",
             description: "An account with this email already exists. Please sign in instead.",
             variant: "destructive",
           });
+        } else if (error.message.includes('Invalid email')) {
+          toast({
+            title: "Invalid email",
+            description: "Please enter a valid email address.",
+            variant: "destructive",
+          });
+        } else if (error.message.includes('weak password')) {
+          toast({
+            title: "Weak password",
+            description: "Password should be at least 6 characters long.",
+            variant: "destructive",
+          });
         } else {
           toast({
             title: "Registration failed",
-            description: error.message,
+            description: error.message || "An error occurred during registration. Please try again.",
             variant: "destructive",
           });
         }
       } else {
+        setEmailSent(true);
         toast({
           title: "Registration successful!",
-          description: "Please check your email to verify your account.",
+          description: "Please check your email to verify your account. Check your spam folder if you don't see it.",
+          duration: 10000,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Signup error:", error);
       toast({
         title: "Registration failed",
         description: "An unexpected error occurred. Please try again.",
@@ -93,6 +111,45 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
       setLoading(false);
     }
   };
+
+  if (emailSent) {
+    return (
+      <div className="space-y-6 text-center">
+        <div>
+          <h2 className="text-2xl font-bold">Check Your Email</h2>
+          <p className="text-muted-foreground mt-2">
+            We've sent a verification link to <strong>{email}</strong>
+          </p>
+        </div>
+        
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-800">
+            Click the verification link in your email to complete your registration.
+            <br />
+            <strong>Don't forget to check your spam folder!</strong>
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <Button 
+            onClick={() => setEmailSent(false)} 
+            variant="outline" 
+            className="w-full"
+          >
+            Try Different Email
+          </Button>
+          
+          <button
+            type="button"
+            onClick={onSwitchToLogin}
+            className="text-sm text-primary hover:underline w-full"
+          >
+            Already verified? Sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -110,6 +167,7 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             required
+            disabled={loading}
           />
         </div>
 
@@ -121,6 +179,7 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            disabled={loading}
           />
         </div>
 
@@ -132,6 +191,7 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={loading}
           />
         </div>
 
@@ -144,6 +204,7 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
+            disabled={loading}
           />
         </div>
 
@@ -156,6 +217,7 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
             minLength={6}
+            disabled={loading}
           />
         </div>
 
@@ -167,6 +229,7 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
             value={referralCode}
             onChange={(e) => setReferralCode(e.target.value)}
             placeholder="Enter referral code"
+            disabled={loading}
           />
         </div>
 
@@ -180,6 +243,7 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
           type="button"
           onClick={onSwitchToLogin}
           className="text-sm text-primary hover:underline"
+          disabled={loading}
         >
           Already have an account? Sign in
         </button>
