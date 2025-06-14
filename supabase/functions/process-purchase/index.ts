@@ -61,11 +61,15 @@ serve(async (req) => {
       const earningAmount = amount * (referral.level === 1 ? 0.05 : 0.01)
       
       try {
-        // Send notification via WebSocket handler
-        await fetch(`${supabaseUrl.replace('https://', 'wss://')}/functions/v1/websocket-handler`, {
+        // Use the correct HTTP endpoint for WebSocket notifications
+        const websocketUrl = `${supabaseUrl}/functions/v1/websocket-handler`;
+        
+        // Send purchase completed notification
+        await fetch(websocketUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
           },
           body: JSON.stringify({
             type: 'purchase_completed',
@@ -80,11 +84,12 @@ serve(async (req) => {
           })
         }).catch(err => console.error('WebSocket notification error:', err))
 
-        // Also send earning update notification
-        await fetch(`${supabaseUrl.replace('https://', 'wss://')}/functions/v1/websocket-handler`, {
+        // Send earning update notification
+        await fetch(websocketUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
           },
           body: JSON.stringify({
             type: 'earning_update',

@@ -17,17 +17,23 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
   const wsRef = useRef<WebSocket | null>(null);
   const subscribersRef = useRef<Map<string, Set<(data: any) => void>>>(new Map());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 5;
 
   const connect = () => {
     if (!user) return;
 
     try {
+      // Fix the WebSocket URL - use the correct Supabase edge function WebSocket endpoint
       const wsUrl = `wss://qztrpzbtoivuqrnhfnaw.supabase.co/functions/v1/websocket-handler`;
+      console.log('Attempting WebSocket connection to:', wsUrl);
+      
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('WebSocket connected successfully');
         setIsConnected(true);
+        reconnectAttempts.current = 0;
         
         // Subscribe this user
         ws.send(JSON.stringify({
@@ -66,22 +72,30 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
         setIsConnected(false);
         wsRef.current = null;
 
-        // Attempt to reconnect after 3 seconds if it wasn't a manual close
-        if (event.code !== 1000) {
+        // Attempt to reconnect with exponential backoff if it wasn't a manual close
+        if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
+          const delay = Math.pow(2, reconnectAttempts.current) * 1000; // 1s, 2s, 4s, 8s, 16s
+          reconnectAttempts.current++;
+          
+          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`);
+          
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('Attempting to reconnect...');
             connect();
-          }, 3000);
+          }, delay);
+        } else if (reconnectAttempts.current >= maxReconnectAttempts) {
+          console.error('Max reconnection attempts reached. WebSocket connection failed.');
         }
       };
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        setIsConnected(false);
       };
 
       wsRef.current = ws;
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
+      setIsConnected(false);
     }
   };
 
@@ -104,10 +118,12 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
     const subscribers = subscribersRef.current.get(event) || new Set();
     subscribers.add(callback);
     subscribersRef.current.set(event, subscribers);
+    console.log(`Subscribed to event: ${event}`);
   };
 
   const unsubscribe = (event: string) => {
     subscribersRef.current.delete(event);
+    console.log(`Unsubscribed from event: ${event}`);
   };
 
   const sendMessage = (message: any) => {
