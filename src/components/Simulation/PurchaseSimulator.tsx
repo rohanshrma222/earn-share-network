@@ -6,40 +6,36 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ShoppingCart, DollarSign } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export const PurchaseSimulator = () => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [amount, setAmount] = useState('1000');
   const [productName, setProductName] = useState('Test Product');
   const [processing, setProcessing] = useState(false);
 
   const simulatePurchase = async () => {
-    if (!user) {
+    if (!user || !session) {
       toast.error('Please sign in to simulate a purchase');
       return;
     }
 
     setProcessing(true);
     try {
-      const response = await fetch('https://qztrpzbtoivuqrnhfnaw.supabase.co/functions/v1/process-purchase', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('process-purchase', {
+        body: {
           userId: user.id,
           amount: parseFloat(amount),
           productName
-        })
+        }
       });
 
-      const result = await response.json();
-      
-      if (response.ok) {
-        toast.success(`Purchase processed! ₹${amount} purchase completed`);
+      if (error) {
+        console.error('Purchase simulation error:', error);
+        toast.error(error.message || 'Failed to process purchase');
       } else {
-        toast.error(result.error || 'Failed to process purchase');
+        console.log('Purchase simulation result:', data);
+        toast.success(`Purchase processed! ₹${amount} purchase completed`);
       }
     } catch (error) {
       console.error('Error simulating purchase:', error);
