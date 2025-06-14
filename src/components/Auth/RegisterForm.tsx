@@ -19,7 +19,6 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
   const [username, setUsername] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
   const { signUp } = useAuth();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -93,12 +92,11 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
           });
         }
       } else {
-        setEmailSent(true);
         toast({
           title: "Registration successful!",
-          description: "Please check your email to verify your account. Check your spam folder if you don't see it.",
-          duration: 10000,
+          description: "Your account has been created and you are now logged in.",
         });
+        // No need to switch views as the auth state will automatically redirect
       }
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -111,45 +109,6 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
       setLoading(false);
     }
   };
-
-  if (emailSent) {
-    return (
-      <div className="space-y-6 text-center">
-        <div>
-          <h2 className="text-2xl font-bold">Check Your Email</h2>
-          <p className="text-muted-foreground mt-2">
-            We've sent a verification link to <strong>{email}</strong>
-          </p>
-        </div>
-        
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <p className="text-sm text-blue-800">
-            Click the verification link in your email to complete your registration.
-            <br />
-            <strong>Don't forget to check your spam folder!</strong>
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          <Button 
-            onClick={() => setEmailSent(false)} 
-            variant="outline" 
-            className="w-full"
-          >
-            Try Different Email
-          </Button>
-          
-          <button
-            type="button"
-            onClick={onSwitchToLogin}
-            className="text-sm text-primary hover:underline w-full"
-          >
-            Already verified? Sign in
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
