@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'react-router-dom';
 
 interface RegisterFormProps {
@@ -12,78 +12,103 @@ interface RegisterFormProps {
 }
 
 export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
-  const [searchParams] = useSearchParams();
-  const [formData, setFormData] = useState({
-    fullName: '',
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    referralCode: searchParams.get('ref') || '',
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
+  const [referralCode, setReferralCode] = useState('');
+  const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
+  const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    // Pre-fill referral code from URL if present
+    const refFromUrl = searchParams.get('ref');
+    if (refFromUrl) {
+      setReferralCode(refFromUrl);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    if (formData.password !== formData.confirmPassword) {
+    
+    if (password !== confirmPassword) {
       toast({
-        title: "Password mismatch",
-        description: "Passwords do not match. Please try again.",
+        title: "Error",
+        description: "Passwords do not match",
         variant: "destructive",
       });
-      setIsLoading(false);
       return;
     }
 
-    const { error } = await signUp(formData.email, formData.password, {
-      full_name: formData.fullName,
-      username: formData.username,
-      referral_code: formData.referralCode,
-    });
-
-    if (error) {
+    if (password.length < 6) {
       toast({
-        title: "Registration failed",
-        description: error.message || "Please try again.",
+        title: "Error",
+        description: "Password must be at least 6 characters long",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Registration successful",
-        description: formData.referralCode 
-          ? "Account created with referral code! Please check your email to verify your account."
-          : "Please check your email to verify your account.",
-      });
-      onSwitchToLogin();
+      return;
     }
-    setIsLoading(false);
-  };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setLoading(true);
+
+    try {
+      const userData = {
+        full_name: fullName,
+        username: username,
+        referral_code: referralCode || undefined
+      };
+
+      const { error } = await signUp(email, password, userData);
+
+      if (error) {
+        if (error.message.includes('User already registered')) {
+          toast({
+            title: "Account exists",
+            description: "An account with this email already exists. Please sign in instead.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Registration failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Registration successful!",
+          description: "Please check your email to verify your account.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Registration failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold">Create Account</h1>
-        <p className="text-muted-foreground">
-          Join our referral network and start earning
-        </p>
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold">Create Account</h2>
+        <p className="text-muted-foreground">Join our referral network</p>
       </div>
-      
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="fullName">Full Name</Label>
           <Input
             id="fullName"
-            placeholder="Enter your full name"
-            value={formData.fullName}
-            onChange={(e) => handleInputChange('fullName', e.target.value)}
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
             required
           />
         </div>
@@ -92,80 +117,72 @@ export const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
           <Label htmlFor="username">Username</Label>
           <Input
             id="username"
-            placeholder="Choose a username"
-            value={formData.username}
-            onChange={(e) => handleInputChange('username', e.target.value)}
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             required
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
-            placeholder="Enter your email"
-            value={formData.email}
-            onChange={(e) => handleInputChange('email', e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
           <Input
             id="password"
             type="password"
-            placeholder="Create a password"
-            value={formData.password}
-            onChange={(e) => handleInputChange('password', e.target.value)}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             required
+            minLength={6}
           />
         </div>
-        
+
         <div className="space-y-2">
           <Label htmlFor="confirmPassword">Confirm Password</Label>
           <Input
             id="confirmPassword"
             type="password"
-            placeholder="Confirm your password"
-            value={formData.confirmPassword}
-            onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             required
+            minLength={6}
           />
         </div>
-        
+
         <div className="space-y-2">
-          <Label htmlFor="referralCode">Referral Code {formData.referralCode && <span className="text-green-600">(Pre-filled)</span>}</Label>
+          <Label htmlFor="referralCode">Referral Code (Optional)</Label>
           <Input
             id="referralCode"
-            placeholder="Enter referral code if you have one"
-            value={formData.referralCode}
-            onChange={(e) => handleInputChange('referralCode', e.target.value)}
+            type="text"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value)}
+            placeholder="Enter referral code"
           />
-          {formData.referralCode && (
-            <p className="text-sm text-green-600">
-              ✓ You'll be connected to the referrer when you sign up!
-            </p>
-          )}
         </div>
-        
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Creating account..." : "Create Account"}
+
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? "Creating Account..." : "Sign Up"}
         </Button>
       </form>
-      
+
       <div className="text-center">
-        <p className="text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Button
-            variant="link"
-            className="p-0 h-auto font-normal"
-            onClick={onSwitchToLogin}
-          >
-            Sign in
-          </Button>
-        </p>
+        <button
+          type="button"
+          onClick={onSwitchToLogin}
+          className="text-sm text-primary hover:underline"
+        >
+          Already have an account? Sign in
+        </button>
       </div>
     </div>
   );
