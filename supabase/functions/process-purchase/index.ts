@@ -63,67 +63,44 @@ serve(async (req) => {
 
     console.log('Found referrals to notify:', referrals?.length || 0)
 
-    // Send WebSocket notifications to referrers
+    // Send real-time notifications to referrers using Supabase channels
     for (const referral of referrals || []) {
       const earningAmount = amount * (referral.level === 1 ? 0.05 : 0.01)
       
       try {
-        // Use the websocket-handler edge function to send notifications
-        const websocketUrl = `${supabaseUrl}/functions/v1/websocket-handler`;
-        console.log('Sending notification to:', referral.referrer_id, 'via:', websocketUrl)
+        const channelName = `user-${referral.referrer_id}-notifications`
+        console.log('Sending notification to channel:', channelName)
         
         // Send purchase completed notification
-        const purchaseResponse = await fetch(websocketUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify({
-            type: 'purchase_completed',
-            userId: referral.referrer_id,
-            data: {
-              referralName: userName,
-              amount: amount,
-              earning: earningAmount,
-              level: referral.level,
-              timestamp: new Date().toISOString()
-            }
-          })
+        const purchaseNotification = await supabase.channel(channelName).send({
+          type: 'broadcast',
+          event: 'purchase_completed',
+          payload: {
+            referralName: userName,
+            amount: amount,
+            earning: earningAmount,
+            level: referral.level,
+            timestamp: new Date().toISOString()
+          }
         })
 
-        if (purchaseResponse.ok) {
-          console.log('Purchase notification sent successfully to:', referral.referrer_id)
-        } else {
-          console.error('Failed to send purchase notification:', await purchaseResponse.text())
-        }
+        console.log('Purchase notification result:', purchaseNotification)
 
         // Send earning update notification
-        const earningResponse = await fetch(websocketUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify({
-            type: 'earning_update',
-            userId: referral.referrer_id,
-            data: {
-              amount: earningAmount,
-              source: `Purchase by ${userName}`,
-              timestamp: new Date().toISOString()
-            }
-          })
+        const earningNotification = await supabase.channel(channelName).send({
+          type: 'broadcast',
+          event: 'earning_update',
+          payload: {
+            amount: earningAmount,
+            source: `Purchase by ${userName}`,
+            timestamp: new Date().toISOString()
+          }
         })
 
-        if (earningResponse.ok) {
-          console.log('Earning notification sent successfully to:', referral.referrer_id)
-        } else {
-          console.error('Failed to send earning notification:', await earningResponse.text())
-        }
+        console.log('Earning notification result:', earningNotification)
 
       } catch (error) {
-        console.error('Error sending WebSocket notification to:', referral.referrer_id, error)
+        console.error('Error sending real-time notification to:', referral.referrer_id, error)
       }
     }
 

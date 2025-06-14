@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface WebSocketContextType {
   isConnected: boolean;
@@ -14,120 +15,65 @@ const WebSocketContext = createContext<WebSocketContextType | undefined>(undefin
 export const WebSocketProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
   const subscribersRef = useRef<Map<string, Set<(data: any) => void>>>(new Map());
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
-
-  const connect = () => {
-    if (!user) return;
-
-    try {
-      // For Lovable preview environment, we need to construct the WebSocket URL differently
-      // Use the same domain as the current page but with wss protocol
-      const currentDomain = window.location.hostname;
-      let wsUrl;
-      
-      if (currentDomain.includes('lovableproject.com')) {
-        // Lovable preview environment - use the project subdomain with Supabase
-        wsUrl = `wss://qztrpzbtoivuqrnhfnaw.supabase.co/functions/v1/websocket-handler`;
-      } else if (currentDomain === 'localhost' || currentDomain === '127.0.0.1') {
-        // Local development
-        wsUrl = `ws://127.0.0.1:54321/functions/v1/websocket-handler`;
-      } else {
-        // Production or other environments
-        wsUrl = `wss://qztrpzbtoivuqrnhfnaw.supabase.co/functions/v1/websocket-handler`;
-      }
-      
-      console.log('Attempting WebSocket connection to:', wsUrl);
-      console.log('Current domain:', currentDomain);
-      
-      const ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        console.log('WebSocket connected successfully');
-        setIsConnected(true);
-        reconnectAttempts.current = 0;
-        
-        // Subscribe this user
-        ws.send(JSON.stringify({
-          type: 'subscribe',
-          userId: user.id
-        }));
-
-        // Start heartbeat
-        const heartbeat = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'heartbeat' }));
-          } else {
-            clearInterval(heartbeat);
-          }
-        }, 30000); // Every 30 seconds
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          console.log('Received WebSocket message:', message);
-
-          if (message.type && message.type !== 'heartbeat_response' && message.type !== 'connected') {
-            const subscribers = subscribersRef.current.get(message.type);
-            if (subscribers) {
-              subscribers.forEach(callback => callback(message.data));
-            }
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
-
-      ws.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
-        setIsConnected(false);
-        wsRef.current = null;
-
-        // Attempt to reconnect with exponential backoff if it wasn't a manual close
-        if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.pow(2, reconnectAttempts.current) * 1000; // 1s, 2s, 4s, 8s, 16s
-          reconnectAttempts.current++;
-          
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`);
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, delay);
-        } else if (reconnectAttempts.current >= maxReconnectAttempts) {
-          console.error('Max reconnection attempts reached. WebSocket connection failed.');
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        console.error('WebSocket URL that failed:', wsUrl);
-        console.error('User ID:', user.id);
-        setIsConnected(false);
-      };
-
-      wsRef.current = ws;
-    } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      setIsConnected(false);
-    }
-  };
+  const channelRef = useRef<any>(null);
 
   useEffect(() => {
-    if (user) {
-      connect();
+    if (!user) {
+      setIsConnected(false);
+      return;
     }
 
+    console.log('Setting up real-time connection for user:', user.id);
+
+    // Create a channel for this user's notifications
+    const channel = supabase.channel(`user-${user.id}-notifications`);
+
+    // Listen for broadcast messages
+    channel
+      .on('broadcast', { event: 'earning_update' }, (payload) => {
+        console.log('Received earning_update:', payload);
+        const subscribers = subscribersRef.current.get('earning_update');
+        if (subscribers) {
+          subscribers.forEach(callback => callback(payload.payload));
+        }
+      })
+      .on('broadcast', { event: 'purchase_completed' }, (payload) => {
+        console.log('Received purchase_completed:', payload);
+        const subscribers = subscribersRef.current.get('purchase_completed');
+        if (subscribers) {
+          subscribers.forEach(callback => callback(payload.payload));
+        }
+      })
+      .on('broadcast', { event: 'referral_joined' }, (payload) => {
+        console.log('Received referral_joined:', payload);
+        const subscribers = subscribersRef.current.get('referral_joined');
+        if (subscribers) {
+          subscribers.forEach(callback => callback(payload.payload));
+        }
+      })
+      .subscribe((status) => {
+        console.log('Channel subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          setIsConnected(true);
+          console.log('Real-time connection established');
+        } else if (status === 'CHANNEL_ERROR') {
+          setIsConnected(false);
+          console.error('Real-time connection error');
+        } else if (status === 'TIMED_OUT') {
+          setIsConnected(false);
+          console.error('Real-time connection timed out');
+        }
+      });
+
+    channelRef.current = channel;
+
     return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
+      console.log('Cleaning up real-time connection');
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
       }
-      if (wsRef.current) {
-        wsRef.current.close(1000, 'Component unmounting');
-      }
+      setIsConnected(false);
     };
   }, [user]);
 
@@ -144,10 +90,14 @@ export const WebSocketProvider = ({ children }: { children: React.ReactNode }) =
   };
 
   const sendMessage = (message: any) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message));
+    if (channelRef.current && isConnected) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: message.type,
+        payload: message.data
+      });
     } else {
-      console.warn('WebSocket is not connected');
+      console.warn('Real-time channel is not connected');
     }
   };
 
