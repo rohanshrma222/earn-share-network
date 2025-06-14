@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,6 +79,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       
       console.log('Signup successful:', data);
+      
+      // If user is immediately available, they're logged in
+      if (data.user && data.session) {
+        console.log('User logged in immediately after signup');
+      } else if (data.user && !data.session) {
+        console.log('User created but needs email confirmation');
+      }
+      
       return { error: null };
     } catch (error) {
       console.error('Signup exception:', error);
@@ -95,8 +104,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (error) {
         console.error('Signin error:', error);
+        console.error('Error code:', error.status, 'Message:', error.message);
       } else {
         console.log('Signin successful:', data.user?.email);
+        console.log('User confirmed:', data.user?.email_confirmed_at);
       }
       
       return { error };

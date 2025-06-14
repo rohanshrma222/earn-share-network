@@ -24,11 +24,27 @@ export const LoginForm = ({ onSwitchToRegister }: LoginFormProps) => {
     const { error } = await signIn(email, password);
 
     if (error) {
-      toast({
-        title: "Login failed",
-        description: error.message || "Please check your credentials and try again.",
-        variant: "destructive",
-      });
+      console.log("Login error details:", error);
+      
+      if (error.message.includes('Invalid login credentials')) {
+        toast({
+          title: "Login failed",
+          description: "Invalid email or password. If you just signed up, your account might need verification. Please check your email or try signing up again.",
+          variant: "destructive",
+        });
+      } else if (error.message.includes('Email not confirmed')) {
+        toast({
+          title: "Email not verified",
+          description: "Please check your email and click the verification link before signing in.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login failed",
+          description: error.message || "Please check your credentials and try again.",
+          variant: "destructive",
+        });
+      }
     } else {
       toast({
         title: "Login successful",
